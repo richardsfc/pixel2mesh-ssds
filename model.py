@@ -23,6 +23,35 @@ class VGG16(nn.Module):
     def forward(self, x):
         return self.conv3(x), self.conv4(x), self.conv5(x)
 
+class ResNet18(nn.Module):
+    '''
+    Pretrained ResNet for image feature extraction
+    '''
+    def __init__(self):
+        super(ResNet18, self).__init__()
+        resnet = torchvision.models.resnet18(pretrained=True)
+
+        # Extract ResNet feature maps layer2, layer3, layer4
+        self.conv1 = resnet.conv1
+        self.bn1 = resnet.bn1
+        self.relu = resnet.relu
+        self.maxpool = resnet.maxpool
+        self.layer1 = resnet.layer1
+        self.layer2 = resnet.layer2
+        self.layer3 = resnet.layer3
+        self.layer4 = resnet.layer4
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x_layer2 = self.layer2(x)
+        x_layer3 = self.layer3(x_layer2)
+        x_layer4 = self.layer4(x_layer3)
+        return x_layer2, x_layer3, x_layer4
 
 class Block(nn.Module):
     '''
@@ -31,6 +60,7 @@ class Block(nn.Module):
     def __init__(self, feat_shape_dim):
         super(Block, self).__init__()
         self.conv1 = GCNConv(1280 + feat_shape_dim, 1024)
+        # self.conv1 = GCNConv(896 + feat_shape_dim, 1024)
         self.conv21 = GCNConv(1024, 512)
         self.conv22 = GCNConv(512, 256)
         self.conv23 = GCNConv(256, 128)
@@ -59,6 +89,7 @@ class GNet(torch.nn.Module):
     def __init__(self):
         super(GNet, self).__init__()
         self.feat_extr = VGG16()
+        # self.feat_extr = ResNet18()
         self.layer1 = Block(3) # No shape features for block 1
         self.layer2 = Block(128)
         self.layer3 = Block(128)

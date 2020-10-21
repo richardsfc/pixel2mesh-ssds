@@ -11,13 +11,13 @@ from graph import Graph
 from model import GNet
 from pool import FeaturePooling
 from metrics import loss_function
-from data import CustomDatasetFolder
+from data_asteroid import CustomDatasetFolder
 
 # Args
 parser = argparse.ArgumentParser(description='Pixel2Mesh training script')
 parser.add_argument('--data', type=str, default=None, metavar='D',
                     help="folder where data is located.")
-parser.add_argument('--epochs', type=int, default=100, metavar='E',
+parser.add_argument('--epochs', type=int, default=30, metavar='E',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--lr', type=float, default=3e-5, metavar='LR',
                     help='learning rate (default: 3e-5)')
@@ -58,7 +58,7 @@ model_gcn.train()
 graph = Graph("./ellipsoid/init_info.pickle")
 
 # Data Loader
-folder = CustomDatasetFolder(args.data, extensions = ["dat"])
+folder = CustomDatasetFolder(args.data, extensions = ["stl"])
 train_loader = torch.utils.data.DataLoader(folder, batch_size=1, shuffle=True)
 
 # Param
@@ -83,15 +83,13 @@ print("nb trainable param", model_gcn.get_nb_trainable_params(), flush=True)
 # Train
 for epoch in range(1, nb_epochs+1):
     for n, data in enumerate(train_loader):
-        ims, gt_points_list, gt_normals_list = data
+        ims, gt_points, gt_normals = data
         ims = np.transpose(ims, (1, 0, 2, 3, 4))
-        gt_points_list = np.transpose(gt_points_list, (1, 0, 2, 3))
-        gt_normals_list = np.transpose(gt_normals_list, (1, 0, 2, 3))
 
         if use_cuda:
             ims = ims.cuda()
-            gt_points_list = gt_points_list.cuda()
-            gt_normals_list = gt_normals_list.cuda()
+            gt_points = gt_points.cuda()
+            gt_normals = gt_normals.cuda()
 
         # Forward
         graph.reset()
@@ -103,8 +101,8 @@ for epoch in range(1, nb_epochs+1):
         pred_points = model_gcn(graph, pools)
 
         # Loss
-        loss = loss_function(pred_points, gt_points_list[0].squeeze(),
-                                          gt_normals_list[0].squeeze(), graph)
+        loss = loss_function(pred_points, gt_points.squeeze(),
+                                          gt_normals.squeeze(), graph)
 
         # Backward
         loss.backward()
@@ -113,16 +111,16 @@ for epoch in range(1, nb_epochs+1):
         curr_loss += loss
 
         # Log
-        if (n+1)%log_step == 0:
-            print("Epoch", epoch, flush=True)
-            print("Batch", n+1, flush=True)
-            print(" Loss:", curr_loss.data.item()/log_step, flush=True)
-            curr_loss = 0
+        # if (n+1)%log_step == 0:
+        print("Epoch", epoch, flush=True)
+        print("Batch", n+1, flush=True)
+        print(" Loss:", curr_loss.data.item()/log_step, flush=True)
+        curr_loss = 0
 
         # Save
-        if (n+1)%saving_step == 0:
-            model_file = args.experiment + "model_" + str(n+1) + ".pth"
-            optimizer_file = args.experiment + "optimizer_" + str(n+1) + ".pth"
-            torch.save(model_gcn.state_dict(), model_file)
-            torch.save(optimizer.state_dict(), optimizer_file)
-            print("Saved model to " + model_file, flush=True)
+        # if (n+1)%saving_step == 0:
+        model_file = args.experiment + "model_" + str(n+1) + ".pth"
+        optimizer_file = args.experiment + "optimizer_" + str(n+1) + ".pth"
+        torch.save(model_gcn.state_dict(), model_file)
+        torch.save(optimizer.state_dict(), optimizer_file)
+        print("Saved model to " + model_file, flush=True)
