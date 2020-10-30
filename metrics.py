@@ -22,9 +22,7 @@ def laplace_loss(pred, pred_b, graph, i):
     Compute the laplacian loss
     '''
     # Set last elem to zero (default value for padding)
-    padding = torch.zeros(1, 3)
-    if torch.cuda.is_available():
-        padding = padding.cuda() # modified
+    padding = torch.zeros(1, 3, device=device)
     ext_pred = torch.cat((pred, padding))
     ext_pred_b = torch.cat((pred_b, padding))
     # Compute Laplacian coordinates

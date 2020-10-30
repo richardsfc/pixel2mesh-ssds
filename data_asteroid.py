@@ -9,8 +9,10 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
     '''
     Data reader
     '''
-    def __init__(self, root, extensions, print_ref=False):
+    def __init__(self, root, extensions, dimension, print_ref=False):
         self.samples = self._make_dataset(root, extensions)
+        self.root = root
+        self.dimension = dimension
         if len(self.samples) == 0:
             raise(RuntimeError("Found 0 files in subfolders of: " + root + "\n"
                                "Supported extensions are: " + ",".join(extensions)))
@@ -40,20 +42,27 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
         if self.print_ref:
             print(path)
         ims = []
-        for i in range(5, 10):
-            img_path = path + str(i) + ".png"
+        for i in range(self.dimension):
+            img_path = path
+            if i < 10:
+                img_path += "0"
+            img_path += str(i) + ".png"
             im = io.imread(img_path)
             im[np.where(im[:, :, 3] == 0)] = 255
             im = im[:, :, :3].astype(np.float32)
             ims.append(im)
-        mesh_path = path + "0.stl"
-        my_mesh = mesh.Mesh.from_file(mesh_path)
+        stl_indices = np.load(self.root + 'state_files/asteroid_choice.npy')
+        stl_index = int(path[-8:-5])
+        stl_files = ['bennu.stl', 'itokawa.stl', 'mithra.stl', 'toutatis.stl']
+        my_mesh = mesh.Mesh.from_file(self.root + 'stl_files/' + stl_files[stl_indices[stl_index]])
         normals = my_mesh.normals.astype(float)
-        points = np.load(path + "0.npy")
+        npy_files = ['bennu.npy', 'itokawa.npy', 'mithra.npy', 'toutatis.npy']
+        points = np.load(self.root + 'stl_files/' + npy_files[stl_indices[stl_index]])
         return np.asarray(ims), np.asarray(points), np.asarray(normals)
 
     def _make_dataset(self, dir, extensions):
         paths = []
+        stl_indices = np.load(dir + 'state_files/asteroid_choice.npy')
         dir = os.path.expanduser(dir)
         for target in sorted(os.listdir(dir)):
             d = os.path.join(dir, target)
@@ -64,8 +73,9 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
                 for fname in sorted(fnames):
                     if self._has_file_allowed_extension(fname, extensions):
                         path = os.path.join(root, fname)
-                        item = path[:-5] # strip away *.stl
-                        if item != item_visited:
+                        item = path[:-6] # strip away **.png
+                        stl_index = int(item[-8:-5])
+                        if item != item_visited and stl_indices[stl_index] != 2:
                             item_visited = item
                             paths.append(item)
         return paths

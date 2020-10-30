@@ -26,7 +26,8 @@ parser.add_argument('--load', type=str, metavar='M',
 args = parser.parse_args()
 
 # Model
-model_gcn = GNet()
+nIms = 5
+model_gcn = GNet(nIms)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 state_dict = torch.load(args.load, map_location=device)
 model_gcn.load_state_dict(state_dict)
@@ -50,7 +51,7 @@ else:
 graph = Graph("./ellipsoid/init_info.pickle")
 
 # Data Loader
-folder = CustomDatasetFolder(args.data, extensions = ["stl"], print_ref=False)
+folder = CustomDatasetFolder(args.data, extensions = ["png"], dimension=nIms, print_ref=False)
 val_loader = torch.utils.data.DataLoader(folder, batch_size=1, shuffle=True)
 
 tot_loss_norm = 0
@@ -64,6 +65,7 @@ show_img = args.show_img
 for n, data in enumerate(val_loader):
     ims, gt_points, gt_normals = data
     ims = np.transpose(ims, (1, 0, 2, 3, 4))
+    m, b, *x_dims = ims.shape
 
     if use_cuda:
         ims = ims.cuda()
@@ -82,7 +84,7 @@ for n, data in enumerate(val_loader):
     # Forward
     graph.reset()
     pools = []
-    for i in range(5):
+    for i in range(m):
         pools.append(FeaturePooling(ims[i]))
     pred_points = model_gcn(graph, pools)
 

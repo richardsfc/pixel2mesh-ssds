@@ -86,13 +86,14 @@ class GNet(torch.nn.Module):
     '''
     Implement the full cascaded mesh deformation network
     '''
-    def __init__(self):
+    def __init__(self, dimension):
         super(GNet, self).__init__()
         self.feat_extr = VGG16()
         # self.feat_extr = ResNet18()
         self.layer1 = Block(3) # No shape features for block 1
         self.layer2 = Block(128)
         self.layer3 = Block(128)
+        self.dimension = dimension
 
     def forward(self, graph, pools):
         # Initial ellipsoid mesh
@@ -100,7 +101,7 @@ class GNet(torch.nn.Module):
 
         # Layer 1
         features = pools[0](elli_points, self.feat_extr)
-        for i in range(1, 5):
+        for i in range(1, self.dimension):
             features = features + pools[i](elli_points, self.feat_extr)
         input = torch.cat((features, elli_points), dim=1)
         x, coord_1 = self.layer1(input, graph.adjacency_mat[0])
@@ -112,7 +113,7 @@ class GNet(torch.nn.Module):
 
         # Layer 2
         features = pools[0](graph.vertices, self.feat_extr)
-        for i in range(1, 5):
+        for i in range(1, self.dimension):
             features = features + pools[i](graph.vertices, self.feat_extr)
         input = torch.cat((features, x), dim=1)
         x, coord_2 = self.layer2(input, graph.adjacency_mat[1])
@@ -124,7 +125,7 @@ class GNet(torch.nn.Module):
 
         # Layer 3
         features = pools[0](graph.vertices, self.feat_extr)
-        for i in range(1, 5):
+        for i in range(1, self.dimension):
             features = features + pools[i](graph.vertices, self.feat_extr)
         input = torch.cat((features, x), dim=1)
         x, coord_3 = self.layer3(input, graph.adjacency_mat[2])

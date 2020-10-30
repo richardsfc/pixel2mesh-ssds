@@ -17,13 +17,13 @@ from data_asteroid import CustomDatasetFolder
 parser = argparse.ArgumentParser(description='Pixel2Mesh training script')
 parser.add_argument('--data', type=str, default=None, metavar='D',
                     help="folder where data is located.")
-parser.add_argument('--epochs', type=int, default=30, metavar='E',
+parser.add_argument('--epochs', type=int, default=100, metavar='E',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--lr', type=float, default=3e-5, metavar='LR',
                     help='learning rate (default: 3e-5)')
 parser.add_argument('--log_step', type=int, default=100, metavar='LS',
                     help='how many batches to wait before logging training status (default: 100)')
-parser.add_argument('--saving_step', type=int, default=1000, metavar='S',
+parser.add_argument('--saving_step', type=int, default=100, metavar='S',
                     help='how many batches to wait before saving model (default: 1000)')
 parser.add_argument('--experiment', type=str, default='./model/', metavar='E',
                     help='folder where model and optimizer are saved.')
@@ -38,12 +38,13 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Model
+nIms = 5
 if args.load_model is not None: # Continue training
     state_dict = torch.load(args.load_model, map_location=device)
-    model_gcn = GNet()
+    model_gcn = GNet(nIms)
     model_gcn.load_state_dict(state_dict)
 else:
-    model_gcn = GNet()
+    model_gcn = GNet(nIms)
 
 # Optimizer
 if args.load_optimizer is not None:
@@ -58,7 +59,7 @@ model_gcn.train()
 graph = Graph("./ellipsoid/init_info.pickle")
 
 # Data Loader
-folder = CustomDatasetFolder(args.data, extensions = ["stl"])
+folder = CustomDatasetFolder(args.data, extensions = ["png"], dimension=nIms)
 train_loader = torch.utils.data.DataLoader(folder, batch_size=1, shuffle=True)
 
 # Param
@@ -85,6 +86,7 @@ for epoch in range(1, nb_epochs+1):
     for n, data in enumerate(train_loader):
         ims, gt_points, gt_normals = data
         ims = np.transpose(ims, (1, 0, 2, 3, 4))
+        m, b, *x_dims = ims.shape
 
         if use_cuda:
             ims = ims.cuda()
@@ -95,7 +97,7 @@ for epoch in range(1, nb_epochs+1):
         graph.reset()
         optimizer.zero_grad()
         pools = []
-        for i in range(5):
+        for i in range(m):
             pools.append(FeaturePooling(ims[i]))
 
         pred_points = model_gcn(graph, pools)
@@ -111,16 +113,16 @@ for epoch in range(1, nb_epochs+1):
         curr_loss += loss
 
         # Log
-        # if (n+1)%log_step == 0:
-        print("Epoch", epoch, flush=True)
-        print("Batch", n+1, flush=True)
-        print(" Loss:", curr_loss.data.item()/log_step, flush=True)
-        curr_loss = 0
+        if (n+1)%log_step == 0:
+            print("Epoch", epoch, flush=True)
+            print("Batch", n+1, flush=True)
+            print(" Loss:", curr_loss.data.item()/log_step, flush=True)
+            curr_loss = 0
 
         # Save
-        # if (n+1)%saving_step == 0:
-        model_file = args.experiment + "model_" + str(n+1) + ".pth"
-        optimizer_file = args.experiment + "optimizer_" + str(n+1) + ".pth"
-        torch.save(model_gcn.state_dict(), model_file)
-        torch.save(optimizer.state_dict(), optimizer_file)
-        print("Saved model to " + model_file, flush=True)
+        if (n+1)%saving_step == 0:
+            model_file = args.experiment + "model_" + str(n+1) + ".pth"
+            optimizer_file = args.experiment + "optimizer_" + str(n+1) + ".pth"
+            torch.save(model_gcn.state_dict(), model_file)
+            torch.save(optimizer.state_dict(), optimizer_file)
+            print("Saved model to " + model_file, flush=True)

@@ -38,12 +38,13 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Model
+nIms = 5
 if args.load_model is not None: # Continue training
     state_dict = torch.load(args.load_model, map_location=device)
-    model_gcn = GNet()
+    model_gcn = GNet(nIms)
     model_gcn.load_state_dict(state_dict)
 else:
-    model_gcn = GNet()
+    model_gcn = GNet(nIms)
 
 # Optimizer
 if args.load_optimizer is not None:
