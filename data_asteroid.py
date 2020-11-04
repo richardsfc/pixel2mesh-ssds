@@ -57,7 +57,11 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
         my_mesh = mesh.Mesh.from_file(self.root + 'stl_files/' + stl_files[stl_indices[stl_index]])
         normals = my_mesh.normals.astype(float)
         npy_files = ['bennu.npy', 'itokawa.npy', 'mithra.npy', 'toutatis.npy']
+        # point_indices = np.arange(20000)
+        # np.random.shuffle(point_indices)
+        # point_indices = point_indices[:8853]
         points = np.load(self.root + 'stl_files/' + npy_files[stl_indices[stl_index]])
+        # points = points[point_indices]
         return np.asarray(ims), np.asarray(points), np.asarray(normals)
 
     def _make_dataset(self, dir, extensions):

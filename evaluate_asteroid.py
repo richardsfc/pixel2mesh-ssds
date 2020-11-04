@@ -26,7 +26,7 @@ parser.add_argument('--load', type=str, metavar='M',
 args = parser.parse_args()
 
 # Model
-nIms = 5
+nIms = 25
 model_gcn = GNet(nIms)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 state_dict = torch.load(args.load, map_location=device)
