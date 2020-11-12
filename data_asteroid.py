@@ -24,7 +24,7 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         path = self.samples[index]
-        ims, points, normals = self._loader(path)
+        ims, viewpoints, points, normals = self._loader(path)
 
         # Apply small transform
         ims = ims.astype(float)/255.0
@@ -32,6 +32,7 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
         ims = (ims - self.mean)/self.std
 
         return torch.from_numpy(ims).float(), \
+               torch.from_numpy(viewpoints).float(), \
                torch.from_numpy(points).float(), \
                torch.from_numpy(normals).float()
 
@@ -41,28 +42,38 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
     def _loader(self, path):
         if self.print_ref:
             print(path)
+        stl_indices = np.load(self.root + 'state_files/asteroid_choice.npy')
+        stl_index = int(path[-8:-5])
+        orbits_pos = np.load(self.root + 'state_files/orbits_positions.npy')
+        orbits_att = np.load(self.root + 'state_files/orbits_attitudes.npy')
+        img_indices = np.arange(40)
+        np.random.shuffle(img_indices)
         ims = []
+        viewpoints = []
         for i in range(self.dimension):
+            ii = img_indices[i]
             img_path = path
-            if i < 10:
+            if ii < 10:
                 img_path += "0"
-            img_path += str(i) + ".png"
+            img_path += str(ii) + ".png"
             im = io.imread(img_path)
             im[np.where(im[:, :, 3] == 0)] = 255
             im = im[:, :, :3].astype(np.float32)
             ims.append(im)
-        stl_indices = np.load(self.root + 'state_files/asteroid_choice.npy')
-        stl_index = int(path[-8:-5])
+            viewpoint = np.zeros(7)
+            viewpoint[:3] = orbits_pos[stl_index, ii, :]
+            viewpoint[3:] = orbits_att[stl_index, ii, :]
+            viewpoints.append(viewpoint)
         stl_files = ['bennu.stl', 'itokawa.stl', 'mithra.stl', 'toutatis.stl']
         my_mesh = mesh.Mesh.from_file(self.root + 'stl_files/' + stl_files[stl_indices[stl_index]])
         normals = my_mesh.normals.astype(float)
         npy_files = ['bennu.npy', 'itokawa.npy', 'mithra.npy', 'toutatis.npy']
-        # point_indices = np.arange(20000)
-        # np.random.shuffle(point_indices)
-        # point_indices = point_indices[:8853]
+        point_indices = np.arange(20000)
+        np.random.shuffle(point_indices)
+        point_indices = point_indices[:8853]
         points = np.load(self.root + 'stl_files/' + npy_files[stl_indices[stl_index]])
-        # points = points[point_indices]
-        return np.asarray(ims), np.asarray(points), np.asarray(normals)
+        points = points[point_indices]
+        return np.asarray(ims), np.asarray(viewpoints), np.asarray(points), np.asarray(normals)
 
     def _make_dataset(self, dir, extensions):
         paths = []

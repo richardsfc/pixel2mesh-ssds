@@ -62,8 +62,8 @@ graph = Graph("./ellipsoid/init_info.pickle")
 # Data Loader
 train_folder = CustomDatasetFolder(args.data, extensions = ["png"], dimension=nIms)
 train_loader = torch.utils.data.DataLoader(train_folder, batch_size=1, shuffle=True)
-val_folder = CustomDatasetFolder(args.data_val, extensions = ["png"], dimension=nIms)
-val_loader = torch.utils.data.DataLoader(val_folder, batch_size=1, shuffle=True)
+# val_folder = CustomDatasetFolder(args.data_val, extensions = ["png"], dimension=nIms)
+# val_loader = torch.utils.data.DataLoader(val_folder, batch_size=1, shuffle=True)
 
 # Param
 nb_epochs = args.epochs
@@ -88,12 +88,21 @@ model_gcn.train()
 # Train
 for epoch in range(1, nb_epochs+1):
     for n, data in enumerate(train_loader):
-        ims, gt_points, gt_normals = data
+        ims, viewpoints, gt_points, gt_normals = data
         ims = np.transpose(ims, (1, 0, 2, 3, 4))
-        m, b, *x_dims = ims.shape
+        viewpoints = np.transpose(viewpoints, (1, 0, 2))
+        m, b, h, w, c = ims.shape
+
+        t_ims = []
+        for i in range(m):
+            v = viewpoints[i].flatten()
+            v = np.tile(v, (b, h, w, 1))
+            im = np.concatenate((ims[i], v), axis=3)
+            t_ims.append(im)
+        t_ims = torch.from_numpy(np.asarray(t_ims))
 
         if use_cuda:
-            ims = ims.cuda()
+            t_ims = t_ims.cuda()
             gt_points = gt_points.cuda()
             gt_normals = gt_normals.cuda()
 
@@ -102,7 +111,7 @@ for epoch in range(1, nb_epochs+1):
         optimizer.zero_grad()
         pools = []
         for i in range(m):
-            pools.append(FeaturePooling(ims[i]))
+            pools.append(FeaturePooling(t_ims[i]))
 
         pred_points = model_gcn(graph, pools)
 
