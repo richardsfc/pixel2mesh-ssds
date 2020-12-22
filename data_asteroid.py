@@ -46,7 +46,7 @@ class CustomDatasetFolder(torch.utils.data.Dataset):
         stl_index = int(path[-8:-5])
         orbits_pos = np.load(self.root + 'state_files/orbits_positions.npy')
         orbits_att = np.load(self.root + 'state_files/orbits_attitudes.npy')
-        img_indices = np.arange(40)
+        img_indices = np.arange(100)
         np.random.shuffle(img_indices)
         ims = []
         viewpoints = []

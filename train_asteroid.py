@@ -19,7 +19,7 @@ parser.add_argument('--data', type=str, default=None, metavar='D',
                     help="folder where data is located.")
 parser.add_argument('--data_val', type=str, default=None, metavar='D',
                     help="folder where validation data is located.")
-parser.add_argument('--epochs', type=int, default=100, metavar='E',
+parser.add_argument('--epochs', type=int, default=200, metavar='E',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--lr', type=float, default=3e-5, metavar='LR',
                     help='learning rate (default: 3e-5)')
@@ -131,11 +131,12 @@ for epoch in range(1, nb_epochs+1):
     curr_loss = 0
 
     # Save model
-    model_file = args.experiment + "model.pth"
-    optimizer_file = args.experiment + "optimizer.pth"
-    torch.save(model_gcn.state_dict(), model_file)
-    torch.save(optimizer.state_dict(), optimizer_file)
-    print("Saved model to " + model_file, flush=True)
+    if epoch % 10 == 0:
+        model_file = args.experiment + "model_" + str(epoch) + ".pth"
+        optimizer_file = args.experiment + "optimizer_" + str(epoch) + ".pth"
+        torch.save(model_gcn.state_dict(), model_file)
+        torch.save(optimizer.state_dict(), optimizer_file)
+        print("Saved model to " + model_file, flush=True)
 
     # model_gcn.eval()
     # for n, data in enumerate(val_loader):
