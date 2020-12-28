@@ -1,4 +1,4 @@
-# Pixel2Mesh SSDS Extensions
+# Pixel2Mesh SSDS Extension
 
 An extension to the https://arxiv.org/abs/1804.01654
 
